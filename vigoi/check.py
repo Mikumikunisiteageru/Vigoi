@@ -71,8 +71,6 @@ def eachredivide(lines, i, j, freport=sys.stdout):
 	subcents = [line.cents.value for line in lines[i:j]]
 	if sumcents == sum(subcents):
 		return
-	# for k in range(i-1, j+1):
-	# 	print(lines[k].number, lines[k].status, lines[k].cents.value)
 	print(f"Redividing Line [{lines[i-1].number}] and filials,", 
 		f"sum = {sumcents/100}:", file=freport)
 	print(f"\tBefore redividing: {[s/100 for s in subcents]}.", file=freport)
@@ -87,8 +85,6 @@ def eachredivide(lines, i, j, freport=sys.stdout):
 	print(f"\tAfter redividing: {[s/100 for s in subcents]}.", file=freport)
 	for (line, subcent) in zip(lines[i:j], subcents):
 		line.cents.value = subcent
-	# for k in range(i-1, j+1):
-	# 	print(lines[k].number, lines[k].status, lines[k].cents.value)
 
 def redivide(lines, freport=sys.stdout):
 	# ensure each group of subitems matches its parental item
@@ -125,7 +121,6 @@ def checkbalance(memory, today, freport=sys.stdout):
 			for line in memory.byaccount[account]:
 				print(f"\t[{line.number}]", line.text, file=freport)
 	if unbalanced == 0:
-		# print(file=freport)
 		print("#"*18, "Balance checked on", today, "#"*18, file=freport)
 
 def addupcategories(memory, today, freport=sys.stdout):
@@ -137,7 +132,6 @@ def addupcategories(memory, today, freport=sys.stdout):
 	print("#"*18, "Added up on", today, "#"*18, file=freport)
 
 def checkbookat(bookpath, reportpath="", fakeaccounts=[]):
-	# print(fakeaccounts)
 	if not os.path.isfile(bookpath):
 		raise FileNotFoundError(f"File `{bookpath}` does not exist!")
 	with codecs.open(bookpath, "r", "utf-8") as fin:
@@ -148,8 +142,6 @@ def checkbookat(bookpath, reportpath="", fakeaccounts=[]):
 	else:
 		freport = codecs.open(reportpath, "a", "utf-8")
 	redivide(lines, freport=freport)
-	# for (i, line) in enumerate(lines):
-	# 	print(i, line.account, line.number, line.status, line.cents.value)
 	memory = Memory()
 	for line in lines:
 		if line.status == "section":

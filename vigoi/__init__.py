@@ -38,6 +38,42 @@ def checkbook(date, config, reportpath, fakeaccounts):
 	bookpath = date.strftime(config.get("PATH", "book"))
 	return checkbookat(bookpath, reportpath, fakeaccounts)
 
+def runnew(parser, args, config):
+	nargs = len(args.new)
+	if nargs == 0:
+		newbook(nextdays(3), config)
+	elif nargs == 2:
+		try:
+			y = int(args.new[0])
+			m = int(args.new[1])
+		except ValueError:
+			raise TypeError(
+				"Arguments following `-n` or `--new` must be integers!")
+		newbook(datetime.date(y, m, 15), config)
+	else:
+		parser.print_help()
+
+def runcheck(parser, args, config):
+	reportpath = config.get("PATH", "report")
+	fakestr = config.get("ACCOUNT", "fakes")
+	if not (fakestr[0] == '[' and fakestr[-1] == ']'):
+		raise ValueError(
+			"`ACCOUNT/fakes` must be a bracket-wrapped comma-separated list!")
+	fakeaccounts = fakestr[1:-1].split(",")
+	nargs = len(args.check)
+	if nargs == 0:
+		checkbook(nextdays(-27), config, reportpath, fakeaccounts)
+	elif nargs == 2:
+		try:
+			y = int(args.check[0])
+			m = int(args.check[1])
+		except ValueError:
+			raise TypeError(
+				"Arguments following `-x` or `--check` must be integers!")
+		checkbook(datetime.date(y, m, 15), config, reportpath, fakeaccounts)
+	else:
+		parser.print_help()
+
 def main():
 	config = configure()
 	parser = argparse.ArgumentParser(
@@ -52,36 +88,6 @@ def main():
 		parser.print_help()
 		return
 	if not args.new is None:
-		nargs = len(args.new)
-		if nargs == 0:
-			newbook(nextdays(3), config)
-		elif nargs == 2:
-			try:
-				y = int(args.new[0])
-				m = int(args.new[1])
-			except ValueError:
-				raise TypeError(
-					"Arguments following `-n` or `--new` must be integers!")
-			newbook(datetime.date(y, m, 15), config)
-		else:
-			parser.print_help()
-	if not args.check is None: # sure, just looks better
-		reportpath = config.get("PATH", "report")
-		fakestr = config.get("ACCOUNT", "fakes")
-		if not (fakestr[0] == '[' and fakestr[-1] == ']'):
-			raise ValueError(
-				"`ACCOUNT/fakes` must be bracket-wrapped & comma-separated!")
-		fakeaccounts = fakestr[1:-1].split(",")
-		nargs = len(args.check)
-		if nargs == 0:
-			checkbook(nextdays(-27), config, reportpath, fakeaccounts)
-		elif nargs == 2:
-			try:
-				y = int(args.check[0])
-				m = int(args.check[1])
-			except ValueError:
-				raise TypeError(
-					"Arguments following `-x` or `--check` must be integers!")
-			checkbook(datetime.date(y,m,15), config, reportpath, fakeaccounts)
-		else:
-			parser.print_help()
+		runnew(parser, args, config)
+	if not args.check is None:
+		runcheck(parser, args, config)
