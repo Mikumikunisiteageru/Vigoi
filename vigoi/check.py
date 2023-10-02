@@ -2,6 +2,7 @@
 
 import codecs
 import datetime
+import os
 import re
 import sys
 
@@ -21,8 +22,11 @@ class Line:
 			return
 		r = re.match(r"^([^\t]*)\t([^\t]*)\t(.+)$", core)
 		if r is None:
-			raise ValueError("Line text malformed!")
+			raise ValueError(f"Line [{number}] text malformed!")
 		self.account = r.group(1)
+		if self.account == "/":
+			self.status = "empty"
+			return
 		self.category = r.group(2)
 		rest = r.group(3)
 		if self.category.startswith("="):
@@ -57,7 +61,7 @@ class Memory:
 	def getcategories(self):
 		return self.bycategory.keys()
 
-def eachredivide(lines, i, j, file=sys.stdout):
+def eachredivide(lines, i, j, freport=sys.stdout):
 	# lines[i:j] constitute a group of subitems
 	if i >= j:
 		raise ValueError("Parental line (category `:`) not followed by filials!")
@@ -69,9 +73,9 @@ def eachredivide(lines, i, j, file=sys.stdout):
 		return
 	# for k in range(i-1, j+1):
 	# 	print(lines[k].number, lines[k].status, lines[k].cents.value)
-	print(f"Redividing Line {lines[i-1].number} and filials,", 
-		f"sum = {sumcents/100}:", file=file)
-	print(f"\tBefore redividing: {[s/100 for s in subcents]}.", file=file)
+	print(f"Redividing Line [{lines[i-1].number}] and filials,", 
+		f"sum = {sumcents/100}:", file=freport)
+	print(f"\tBefore redividing: {[s/100 for s in subcents]}.", file=freport)
 	n = len(subcents)
 	for k in range(1, n):
 		subcents[k] += subcents[k-1]
@@ -80,13 +84,13 @@ def eachredivide(lines, i, j, file=sys.stdout):
 		subcents[k] = round(subcents[k] * factor)
 	for k in range(n-1, 0, -1):
 		subcents[k] -= subcents[k-1]
-	print(f"\tAfter redividing: {[s/100 for s in subcents]}.", file=file)
+	print(f"\tAfter redividing: {[s/100 for s in subcents]}.", file=freport)
 	for (line, subcent) in zip(lines[i:j], subcents):
 		line.cents.value = subcent
 	# for k in range(i-1, j+1):
 	# 	print(lines[k].number, lines[k].status, lines[k].cents.value)
 
-def redivide(lines, file=sys.stdout):
+def redivide(lines, freport=sys.stdout):
 	# ensure each group of subitems matches its parental item
 	n = len(lines)
 	i = 0
@@ -96,7 +100,7 @@ def redivide(lines, file=sys.stdout):
 			j = i + 1
 			while j < n and lines[j].status == "subitem":
 				j += 1
-			eachredivide(lines, i+1, j, file=file)
+			eachredivide(lines, i+1, j, freport=freport)
 			i = j - 1
 		i += 1
 
@@ -110,43 +114,53 @@ def addup(memory, category):
 		return 0
 	return sum(line.cents.value for line in memory.bycategory[category])
 
-def checkbalance(memory, today, file=sys.stdout):
-	print(file=file)
+def checkbalance(memory, today, freport=sys.stdout):
+	print(file=freport)
 	unbalanced = 0
 	for account in memory.getaccounts():
 		delta = balance(memory, account)
 		if delta != 0:
 			unbalanced += 1
-			print(account, delta / 100, file=file)
+			print(account, delta / 100, file=freport)
 			for line in memory.byaccount[account]:
-				print(f"\t[{line.number}]", line.text, file=file)
+				print(f"\t[{line.number}]", line.text, file=freport)
 	if unbalanced == 0:
-		print(file=file)
-		print("#"*18, "Balance checked on", today, "#"*18, file=file)
+		# print(file=freport)
+		print("#"*18, "Balance checked on", today, "#"*18, file=freport)
 
-def addupcategories(memory, today, file=sys.stdout):
-	print(file=file)
+def addupcategories(memory, today, freport=sys.stdout):
+	print(file=freport)
 	for category in sorted(memory.getcategories()):
 		subsum = "%9.2f" % (addup(memory, category) / 100)
-		print(f"#\t{category}\t{subsum}", file=file)
-	print(file=file)
-	print("#"*18, "Added up on", today, "#"*18, file=file)
+		print(f"#\t{category}\t{subsum}", file=freport)
+	print(file=freport)
+	print("#"*18, "Added up on", today, "#"*18, file=freport)
 
-def checkbookat(bookpath, fakeaccounts=[], file=sys.stdout):
+def checkbookat(bookpath, reportpath="", fakeaccounts=[]):
+	# print(fakeaccounts)
+	if not os.path.isfile(bookpath):
+		raise FileNotFoundError(f"File `{bookpath}` does not exist!")
 	with codecs.open(bookpath, "r", "utf-8") as fin:
 		lines = list(filter(lambda l: l.status != "empty", [Line(i, t) 
 			for (i, t) in enumerate(fin.read().splitlines(), start=1)]))
-	redivide(lines, file=file)
+	if reportpath == "":
+		freport = sys.stdout
+	else:
+		freport = codecs.open(reportpath, "a", "utf-8")
+	redivide(lines, freport=freport)
 	# for (i, line) in enumerate(lines):
 	# 	print(i, line.account, line.number, line.status, line.cents.value)
 	memory = Memory()
 	for line in lines:
-		if not (line.status == "item" and line.category == ":"):
+		if line.status == "section":
 			memory.pushaccount(line)
-		if line.status != "section":
-			if line.category != ":" and not line.category in fakeaccounts:
+		elif line.category != ":":
+			memory.pushaccount(line)
+			if not line.account in fakeaccounts:
 				memory.pushcategory(line)
 	date28hr = datetime.datetime.now() - datetime.timedelta(hours=4)
 	today = date28hr.strftime("%Y%m%d")
-	checkbalance(memory, today, file=file)
-	addupcategories(memory, today, file=file)
+	checkbalance(memory, today, freport=freport)
+	addupcategories(memory, today, freport=freport)
+	if reportpath != "":
+		freport.close()
