@@ -36,6 +36,8 @@ class Line:
 				self.cents.opposite()
 		else:
 			ri = re.match(r"(\t?)[^\t]+\t(.+$)", rest)
+			if ri is None:
+				raise ValueError(f"Line [{number}] text malformed!")
 			if ri.group(1) == "\t":
 				if self.category == "":
 					self.status = "empty"
