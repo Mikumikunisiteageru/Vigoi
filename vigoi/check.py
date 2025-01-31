@@ -66,7 +66,7 @@ class Memory:
 def eachredivide(lines, i, j, freport=sys.stdout):
 	# lines[i:j] constitute a group of subitems
 	if i >= j:
-		raise ValueError("Parental line (category `:`) not followed by filials!")
+		raise ValueError(f"Parental Line [{lines[i-1].number}] (category `:`) not followed by filials!")
 	for k in range(i, j):
 		lines[k].account = lines[i-1].account
 	sumcents = lines[i-1].cents.value
